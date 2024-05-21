@@ -6,15 +6,15 @@
             "type": "shell",
             "command": "gcc",
             "args": [
-                    "-g",
-                    "-std=c11",
-                    "-I./include",
-                    "-L./lib",
-                    "src/\\main.c",
-                    "src/glad.c",
-                    "-lglfw3dll",
-                    "-o",
-                    "${workspaceFolder}/main.exe"
+                "-g",
+                "-std=c11",
+                "-I./include",
+                "-L./lib",
+                "src/main.c",
+                "src/glad.c",
+                "-lglfw3dll",
+                "-o",
+                "${workspaceFolder}/src/main.exe"
             ],
             "group": {
                 "kind": "build",
