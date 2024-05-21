@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build C Project",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                    "-g",
+                    "-std=c11",
+                    "-I./include",
+                    "-L./lib",
+                    "src/\\main.c",
+                    "src/glad.c",
+                    "-lglfw3dll",
+                    "-o",
+                    "${workspaceFolder}/main.exe"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Task to build the C project"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		},
+		{
+			"name": "server",
+			"path": "../../../../Documents/PlatformIO/Projects/server"
+		},
+		{
+			"name": "MotorController",
+			"path": "../../../../Documents/PlatformIO/Projects/MotorController"
+		},
+		{
+			"name": "AccelTest",
+			"path": "../../../../Documents/PlatformIO/Projects/AccelTest"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": ".vscode"
+	}
+}
