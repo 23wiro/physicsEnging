@@ -8,10 +8,42 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-float radius = 0.5f; // Normalized device coordinates range from -1 to 1
-float centerX = 0.0f;
-float centerY = 0.0f;
+
+float radius = 0.1; // Normalized device coordinates range from -1 to 1
 #define NUM_SEGMENTS 100
+
+typedef struct {
+    double x, y;
+} vector2;
+
+typedef struct {
+    vector2 position;
+    vector2 velocity;
+    vector2 acceleration;
+} centerPoint;
+
+void initCenterpoint(centerPoint *p, double x, double y, double vx, double vy) {
+    p->position = (vector2){x, y};
+    p->velocity = (vector2){vx, vy};
+    p->acceleration = (vector2){0.0, 0.0};
+}
+
+void gravity(centerPoint *p) {
+    const double G = -9.81;
+    p->acceleration = (vector2){0.0, G};
+}
+
+void verlet(centerPoint *p, double dt) {
+    vector2 temp = p->position;
+
+    p->position.x += p->velocity.x * dt + 0.5 * p->acceleration.x * dt * dt;
+    p->position.y += p->velocity.y * dt + 0.5 * p->acceleration.y * dt * dt;
+
+    gravity(p);
+
+    p->velocity.x += (p->acceleration.x * dt);
+    p->velocity.y += (p->acceleration.y * dt);
+}
 
 // Vertex shader source code
 const char *vertexShaderSource = "#version 330 core\n"
@@ -20,6 +52,21 @@ const char *vertexShaderSource = "#version 330 core\n"
     "void main() {\n"
     "   gl_Position = projection * vec4(aPos, 0.0, 1.0);\n"
     "}\0";
+
+// Circle vertices generation
+void circleGen(float centerX, float centerY, float radius, int numSegments, float *points) {
+    float angleStep = 2 * M_PI / numSegments;
+
+    // Center vertex
+    points[0] = centerX;
+    points[1] = centerY;
+
+    for (int i = 1; i <= numSegments + 1; i++) {
+        float angle = (i - 1) * angleStep;
+        points[i * 2] = centerX + radius * cos(angle);
+        points[i * 2 + 1] = centerY + radius * sin(angle);
+    }
+}
 
 // Fragment shader source code
 const char *fragmentShaderSource = "#version 330 core\n"
@@ -42,6 +89,8 @@ void getMonitorResolution(int *width, int *height) {
 }
 
 int main() {
+    centerPoint p;
+    initCenterpoint(&p, 0.0, 0.0, 1.0, 1.0); // Starting position and velocity
     int width, height;
 
     // Set the error callback
@@ -123,29 +172,19 @@ int main() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // Generate circle vertices
-    float vertices[(NUM_SEGMENTS + 2) * 2];
-    float angleStep = 2 * M_PI / NUM_SEGMENTS;
-
-    // Center vertex
-    vertices[0] = centerX;
-    vertices[1] = centerY;
-
-    for (int i = 1; i <= NUM_SEGMENTS + 1; i++) {
-        float angle = (i - 1) * angleStep;
-        vertices[i * 2] = centerX + radius * cos(angle);
-        vertices[i * 2 + 1] = centerY + radius * sin(angle);
-    }
-
     // Set up the vertex array object (VAO) and vertex buffer object (VBO)
     unsigned int VAO, VBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
     glBindVertexArray(VAO);
+    float vertices[(NUM_SEGMENTS + 2) * 2]; // *2 if each vertex consists of 2 floats (x and y)
+    float centerX = p.position.x;
+    float centerY = p.position.y;
+    circleGen(centerX, centerY, radius, NUM_SEGMENTS, vertices);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
@@ -169,6 +208,16 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT);
+
+        // Update the particle position using Verlet integration
+        verlet(&p, 0.01); // Small time step
+
+        // Update the circle vertices based on the new position
+        circleGen(p.position.x, p.position.y, radius, NUM_SEGMENTS, vertices);
+
+        // Update the vertex buffer data
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
 
         // Render the circle
         glUseProgram(shaderProgram);
