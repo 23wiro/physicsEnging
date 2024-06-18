@@ -1,3 +1,29 @@
+// hours wasted here: 11
+
+/* 
+
+TODO:
+
+    High Priority:
+
+    - [] fix balls not showing after exceeding initial capacity 
+        (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
+
+    Medium Priority:
+
+    - [] fix the issue where the balls are not colliding with each other properly
+        (no clue why)
+    - [] fix the issue where the balls slowly phase through the border
+        (easy fix, just need to check if the ball is on the border and then disableing gravity)    
+    
+    low priority:
+
+    - [] add the border to the window
+    - [] end my suffering
+
+*/
+
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stdio.h>
@@ -49,7 +75,12 @@ void freePointArray(pointArray *a) {
 void addPoint(pointArray *a, double x, double y, double vx, double vy) {
     if (a->size >= a->capacity) {
         a->capacity *= 2;
-        a->points = (centerPoint *)realloc(a->points, a->capacity * sizeof(centerPoint));
+        centerPoint *newPoints = (centerPoint *)realloc(a->points, a->capacity * sizeof(centerPoint));
+        if (newPoints == NULL) {
+            fprintf(stderr, "Epic realloc failure\n");
+            return;
+        }
+        a->points = newPoints;
         printf("Resized array to %d\n", a->capacity);
     }
     printf("Added point at %d\n", a->size);
@@ -116,7 +147,7 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
     for (int i = 0; i < a->size; ++i) {
         float vertices[(NUM_SEGMENTS + 2) * 2];
         circleGen(&a->points[i], radius, NUM_SEGMENTS, vertices);
-        glBufferSubData(GL_ARRAY_BUFFER, i * sizeof(vertices), sizeof(vertices), vertices);
+        glBufferSubData(GL_ARRAY_BUFFER, i * (NUM_SEGMENTS + 2) * 2 * sizeof(float), (NUM_SEGMENTS + 2) * 2 * sizeof(float), vertices);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -246,14 +277,6 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
         float dx, dy;
         bool spaceCurrentlyPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
-        char debugPointArray[100];
-    int debugPointArray;
-    if(scanf("%c", &debugPointArray) == 1) {
-        for (int i = 0; i < a.size; i++) {
-            printf("%f\n", a.points[i].position.x);
-            printf("%f\n", a.points[i].position.y);
-        }
-    }
 
         if (spaceCurrentlyPressed && !spacePressed) {
             addPoint(&a, 0.0, 0.0, 1.0, 0.5);
