@@ -9,11 +9,13 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#define borderRadius 0.9f
+
 #define NUM_SEGMENTS 20
-#define NUM_POINTS 1
+#define INITIAL_CAPACITY 10
 
 float radius = 0.1f; // Normalized device coordinates range from -1 to 1
-bool spacePressed = false; // prevents spawning 8000 balls in one frame
+bool spacePressed = false; // prevents spawning multiple balls in one frame
 
 typedef struct {
     double x, y;
@@ -48,7 +50,9 @@ void addPoint(pointArray *a, double x, double y, double vx, double vy) {
     if (a->size >= a->capacity) {
         a->capacity *= 2;
         a->points = (centerPoint *)realloc(a->points, a->capacity * sizeof(centerPoint));
+        printf("Resized array to %d\n", a->capacity);
     }
+    printf("Added point at %d\n", a->size);
     centerPoint *p = &a->points[a->size++];
     p->position = (vector2){x, y};
     p->velocity = (vector2){vx, vy};
@@ -66,6 +70,14 @@ void circleGen(centerPoint *p, float radius, int numSegments, float *vertices) {
     }
 }
 
+void borderCollision(centerPoint *p, float radius) {
+    if (sqrt(p->position.x * p->position.x + p->position.y * p->position.y) >= borderRadius - radius) {
+        // Simple elastic collision response
+        p->velocity.x = 0.8 * -p->velocity.x;
+        p->velocity.y = 0.8 * -p->velocity.y;
+    }
+}
+
 void gravity(centerPoint *p) {
     const double G = -9.81;
     p->acceleration = (vector2){0.0, G};
@@ -79,6 +91,24 @@ void verlet(centerPoint *p, double dt, float *dx, float *dy) {
     gravity(p);
     p->velocity.x += p->acceleration.x * dt;
     p->velocity.y += p->acceleration.y * dt;
+}
+
+void collisionDetection(pointArray *a, float radius) {
+    for (int i = 0; i < a->size; i++) {
+        for (int j = 0; j < a->size; j++) {
+            if (i != j) {
+                double dx = a->points[i].position.x - a->points[j].position.x;
+                double dy = a->points[i].position.y - a->points[j].position.y;
+                double distance = sqrt(dx * dx + dy * dy);
+                if (distance <= 2 * radius) {
+                    // Simple elastic collision response
+                    vector2 temp = a->points[i].velocity;
+                    a->points[i].velocity = a->points[j].velocity;
+                    a->points[j].velocity = temp;
+                }
+            }
+        }
+    }
 }
 
 void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
@@ -116,22 +146,9 @@ void getMonitorResolution(int *width, int *height) {
     *height = desktop.bottom;
 }
 
-void removePoint(pointArray *a, int index) {
-    if(index < 0 || index >= a->size) {
-        fprintf(stderr, "Index out of bounds\n");
-        return;
-    }
-
-    for(int i = index; i < a->size - 1; i++) {
-        a->points[i] = a->points[i + 1];
-    }
-
-    a->size--;
-}
-
 int main() {
     pointArray a;
-    initPointArray(&a, 10);
+    initPointArray(&a, INITIAL_CAPACITY);
     addPoint(&a, 0.0, 0.0, 1.0, 0.5); // Starting position and velocity
 
     int width, height;
@@ -227,9 +244,17 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
-        float dy, dx;
+        float dx, dy;
         bool spaceCurrentlyPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
-        
+        char debugPointArray[100];
+    int debugPointArray;
+    if(scanf("%c", &debugPointArray) == 1) {
+        for (int i = 0; i < a.size; i++) {
+            printf("%f\n", a.points[i].position.x);
+            printf("%f\n", a.points[i].position.y);
+        }
+    }
+
         if (spaceCurrentlyPressed && !spacePressed) {
             addPoint(&a, 0.0, 0.0, 1.0, 0.5);
             spacePressed = true;
@@ -239,7 +264,10 @@ int main() {
 
         for (int i = 0; i < a.size; i++) {
             verlet(&a.points[i], 0.01, &dx, &dy);
+            borderCollision(&a.points[i], radius);
         }
+
+        collisionDetection(&a, radius);
         updateVertexData(&a, VBO, radius);
 
         glUseProgram(shaderProgram);
