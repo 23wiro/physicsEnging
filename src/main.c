@@ -1,12 +1,11 @@
-// hours wasted here: 13
-
+// hours wasted here: 14
 /* 
 
 TODO:
 
     High Priority:
 
-    - [] fix balls not showing after exceeding initial capacity 
+    - [x] fix balls not showing after exceeding initial capacity 
         (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
         Nothing works
 
@@ -14,7 +13,7 @@ TODO:
 
     - [] fix the issue where the balls are not colliding with each other properly
         (no clue why)
-    - [] fix the issue where the balls slowly phase through the border
+    - [x] fix the issue where the balls slowly phase through the border
         (easy fix, just need to check if the ball is on the border and then disable gravity)    
     
     low priority:
@@ -23,7 +22,6 @@ TODO:
     - [] end my suffering
 
 */
-
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -38,10 +36,13 @@ TODO:
 #endif
 
 unsigned int VBO;
+#define SLOP 0.0001
+#define DAMPING 0.98
 #define borderRadius 0.9f
 #define NUM_SEGMENTS 20
 #define INITIAL_CAPACITY 10
-float radius = 0.1f; // Normalized device coordinates range from -1 to 1
+#define timeStep 0.01
+float radius = 0.01f; // Normalized device coordinates range from -1 to 1
 bool spacePressed = false; // prevents spawning multiple balls in one frame
 
 typedef struct {
@@ -107,12 +108,47 @@ void circleGen(centerPoint *p, float radius, int numSegments, float *vertices) {
     }
 }
 
-void borderCollision(centerPoint *p, float radius) {
-    if (sqrt(p->position.x * p->position.x + p->position.y * p->position.y) >= borderRadius - radius) {
-        // Simple elastic collision response
-        p->velocity.x = 0.8 * -p->velocity.x;
-        p->velocity.y = 0.8 * -p->velocity.y;
+void drawHollow(centerPoint *p, float radius, int numSegments, unsigned int VBO) {
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    float x = p->position.x;
+    float y = p->position.y;
+    float vertices[NUM_SEGMENTS * 2];
+    float angleStep = 2.0f * M_PI / numSegments;
+    for (int i = 0; i < numSegments; i++) {
+        float angle = i * angleStep;
+        float dx = radius * cosf(angleStep);
+        float dy = radius * sinf(angleStep);
+
+        vertices[i] = x + dx;
+        vertices[i + 1] = y + dy;
+        glBufferSubData(GL_ARRAY_BUFFER, i * (NUM_SEGMENTS + 2) * 2 * sizeof(float), (NUM_SEGMENTS + 2) * 2 * sizeof(float), vertices);
     }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+int borderCollision(centerPoint *p, float radius) {
+    double distance = sqrt(p->position.x * p->position.x + p->position.y * p->position.y);
+    double overlap = distance - (borderRadius - radius);
+
+    if (overlap > 0) {
+        double nx = p->position.x / distance;
+        double ny = p->position.y / distance;
+
+        // Separate the ball from the border
+        p->position.x -= nx * (overlap + SLOP);
+        p->position.y -= ny * (overlap + SLOP);
+
+        // Apply impulse-based collision response
+        double relativeVelocityX = p->velocity.x;
+        double relativeVelocityY = p->velocity.y;
+        double dotProduct = relativeVelocityX * nx + relativeVelocityY * ny;
+
+        p->velocity.x -= (1 + DAMPING) * dotProduct * nx;
+        p->velocity.y -= (1 + DAMPING) * dotProduct * ny;
+
+        return 1;
+    }
+    return 0;
 }
 
 void gravity(centerPoint *p) {
@@ -125,27 +161,13 @@ void verlet(centerPoint *p, double dt, float *dx, float *dy) {
     *dy = p->velocity.y * dt + 0.5 * p->acceleration.y * dt * dt;
     p->position.x += *dx;
     p->position.y += *dy;
-    gravity(p);
+
+    if (!borderCollision(p, radius)) {
+        gravity(p);
+    }
+
     p->velocity.x += p->acceleration.x * dt;
     p->velocity.y += p->acceleration.y * dt;
-}
-
-void collisionDetection(pointArray *a, float radius) {
-    for (int i = 0; i < a->size; i++) {
-        for (int j = 0; j < a->size; j++) {
-            if (i != j) {
-                double dx = a->points[i].position.x - a->points[j].position.x;
-                double dy = a->points[i].position.y - a->points[j].position.y;
-                double distance = sqrt(dx * dx + dy * dy);
-                if (distance <= 2 * radius) {
-                    // Simple elastic collision response
-                    vector2 temp = a->points[i].velocity;
-                    a->points[i].velocity = a->points[j].velocity;
-                    a->points[j].velocity = temp;
-                }
-            }
-        }
-    }
 }
 
 void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
@@ -153,9 +175,43 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
     for (int i = 0; i < a->size; ++i) {
         float vertices[(NUM_SEGMENTS + 2) * 2];
         circleGen(&a->points[i], radius, NUM_SEGMENTS, vertices);
-        glBufferSubData(GL_ARRAY_BUFFER, i * (NUM_SEGMENTS + 2) * 2 * sizeof(float), (NUM_SEGMENTS + 2) * 2 * sizeof(float), vertices);
+        glBufferSubData(GL_ARRAY_BUFFER, i * (NUM_SEGMENTS + 2) * 2 * sizeof(float), (NUM_SEGMENTS + 2) * 2 * sizeof(float), vertices);  //if a circle is mising this is the problem (i think) hopyfully adding one to i in the offset will fix it
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
+void collisionDetection(pointArray *a, float radius) {
+    for (int i = 0; i < a->size; i++) {
+        for (int j = i + 1; j < a->size; j++) {
+            double dx = a->points[i].position.x - a->points[j].position.x;
+            double dy = a->points[i].position.y - a->points[j].position.y;
+            double distance = sqrt(dx * dx + dy * dy);
+            double overlap = 2 * radius - distance;
+
+            if (overlap > 0) {
+                double nx = dx / distance;
+                double ny = dy / distance;
+
+                // Separate the balls
+                double correction = (overlap + SLOP) / 2;
+                a->points[i].position.x += nx * correction;
+                a->points[i].position.y += ny * correction;
+                a->points[j].position.x -= nx * correction;
+                a->points[j].position.y -= ny * correction;
+
+                // Apply impulse-based collision response
+                double relativeVelocityX = a->points[i].velocity.x - a->points[j].velocity.x;
+                double relativeVelocityY = a->points[i].velocity.y - a->points[j].velocity.y;
+                double dotProduct = relativeVelocityX * nx + relativeVelocityY * ny;
+
+                a->points[i].velocity.x -= (1 + DAMPING) * dotProduct * nx;
+                a->points[i].velocity.y -= (1 + DAMPING) * dotProduct * ny;
+                a->points[j].velocity.x += (1 + DAMPING) * dotProduct * nx;
+                a->points[j].velocity.y += (1 + DAMPING) * dotProduct * ny;
+            }
+        }
+    }
 }
 
 const char *vertexShaderSource = "#version 330 core\n"
@@ -185,6 +241,7 @@ void getMonitorResolution(int *width, int *height) {
 
 int main() {
     pointArray a;
+    centerPoint boundryCenter;
     initPointArray(&a, INITIAL_CAPACITY);
     addPoint(&a, 0.0, 0.0, 1.0, 0.5); // Starting position and velocity
 
@@ -283,7 +340,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
         float dx, dy;
         bool spaceCurrentlyPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
-
+        drawHollow(&boundryCenter, radius, NUM_SEGMENTS, VBO );
         if (spaceCurrentlyPressed && !spacePressed) {
             addPoint(&a, 0.0, 0.0, 1.0, 0.5);
             spacePressed = true;
@@ -292,7 +349,7 @@ int main() {
         }
 
         for (int i = 0; i < a.size; i++) {
-            verlet(&a.points[i], 0.01, &dx, &dy);
+            verlet(&a.points[i], timeStep, &dx, &dy);
             borderCollision(&a.points[i], radius);
         }
 
