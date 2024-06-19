@@ -5,15 +5,13 @@ TODO:
 
     High Priority:
 
-    - [] fix jitterint with large number of balls
-
     - [x] fix balls not showing after exceeding initial capacity 
         (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
         Nothing works
 
     Medium Priority:
 
-    - [x] fix the issue where the balls phasing through each other properly
+    - [] fix the issue where the balls are not colliding with each other properly
         (no clue why)
     - [x] fix the issue where the balls slowly phase through the border
         (easy fix, just need to check if the ball is on the border and then disable gravity)    
@@ -39,7 +37,6 @@ TODO:
 
 unsigned int VBO;
 #define SLOP 0.0001
-#define DAMPING 0.98
 #define borderRadius 0.9f
 #define NUM_SEGMENTS 20
 #define INITIAL_CAPACITY 10
@@ -129,25 +126,21 @@ void drawHollow(centerPoint *p, float radius, int numSegments, unsigned int VBO)
 }
 
 int borderCollision(centerPoint *p, float radius) {
-    double distance = sqrt(p->position.x * p->position.x + p->position.y * p->position.y);
-    double overlap = distance - (borderRadius - radius);
-
-    if (overlap > 0) {
-        double nx = p->position.x / distance;
-        double ny = p->position.y / distance;
-
-        // Separate the ball from the border
-        p->position.x -= nx * (overlap + SLOP);
-        p->position.y -= ny * (overlap + SLOP);
-
-        // Apply impulse-based collision response
-        double relativeVelocityX = p->velocity.x;
-        double relativeVelocityY = p->velocity.y;
-        double dotProduct = relativeVelocityX * nx + relativeVelocityY * ny;
-
-        p->velocity.x -= (1 + DAMPING) * dotProduct * nx;
-        p->velocity.y -= (1 + DAMPING) * dotProduct * ny;
-
+    float distance = sqrt(p->position.x * p->position.x + p->position.y * p->position.y);
+    if (distance >= borderRadius - radius) {
+        // Calculate the normal direction (outward from the center)
+        float nx = p->position.x / distance;
+        float ny = p->position.y / distance;
+        
+        // Reverse velocity along the normal direction
+        float dotProduct = p->velocity.x * nx + p->velocity.y * ny;
+        p->velocity.x -= 2 * dotProduct * nx;
+        p->velocity.y -= 2 * dotProduct * ny;
+        
+        // Reposition the ball just inside the boundary
+        p->position.x = (borderRadius - radius) * nx;
+        p->position.y = (borderRadius - radius) * ny;
+        
         return 1;
     }
     return 0;
@@ -184,6 +177,9 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 
 
 void collisionDetection(pointArray *a, float radius) {
+    const double damping = 0.98; // Damping factor to reduce jittering
+    const double slop = SLOP; // Small threshold for allowable overlap
+
     for (int i = 0; i < a->size; i++) {
         for (int j = i + 1; j < a->size; j++) {
             double dx = a->points[i].position.x - a->points[j].position.x;
@@ -191,26 +187,25 @@ void collisionDetection(pointArray *a, float radius) {
             double distance = sqrt(dx * dx + dy * dy);
             double overlap = 2 * radius - distance;
 
-            if (overlap > 0) {
+            if (overlap > slop) {
+                // Separate the balls
                 double nx = dx / distance;
                 double ny = dy / distance;
+                a->points[i].position.x += nx * (overlap - slop) / 2;
+                a->points[i].position.y += ny * (overlap - slop) / 2;
+                a->points[j].position.x -= nx * (overlap - slop) / 2;
+                a->points[j].position.y -= ny * (overlap - slop) / 2;
 
-                // Separate the balls
-                double correction = (overlap + SLOP) / 2;
-                a->points[i].position.x += nx * correction;
-                a->points[i].position.y += ny * correction;
-                a->points[j].position.x -= nx * correction;
-                a->points[j].position.y -= ny * correction;
+                // Calculate new velocities
+                double vx = a->points[i].velocity.x - a->points[j].velocity.x;
+                double vy = a->points[i].velocity.y - a->points[j].velocity.y;
+                double dotProduct = vx * nx + vy * ny;
 
-                // Apply impulse-based collision response
-                double relativeVelocityX = a->points[i].velocity.x - a->points[j].velocity.x;
-                double relativeVelocityY = a->points[i].velocity.y - a->points[j].velocity.y;
-                double dotProduct = relativeVelocityX * nx + relativeVelocityY * ny;
-
-                a->points[i].velocity.x -= (1 + DAMPING) * dotProduct * nx;
-                a->points[i].velocity.y -= (1 + DAMPING) * dotProduct * ny;
-                a->points[j].velocity.x += (1 + DAMPING) * dotProduct * nx;
-                a->points[j].velocity.y += (1 + DAMPING) * dotProduct * ny;
+                // Apply the collision response with damping
+                a->points[i].velocity.x = (a->points[i].velocity.x - dotProduct * nx) * damping;
+                a->points[i].velocity.y = (a->points[i].velocity.y - dotProduct * ny) * damping;
+                a->points[j].velocity.x = (a->points[j].velocity.x + dotProduct * nx) * damping;
+                a->points[j].velocity.y = (a->points[j].velocity.y + dotProduct * ny) * damping;
             }
         }
     }
