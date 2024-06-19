@@ -1,4 +1,4 @@
-// hours wasted here: 11
+// hours wasted here: 13
 
 /* 
 
@@ -8,17 +8,18 @@ TODO:
 
     - [] fix balls not showing after exceeding initial capacity 
         (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
+        Nothing works
 
     Medium Priority:
 
     - [] fix the issue where the balls are not colliding with each other properly
         (no clue why)
     - [] fix the issue where the balls slowly phase through the border
-        (easy fix, just need to check if the ball is on the border and then disableing gravity)    
+        (easy fix, just need to check if the ball is on the border and then disable gravity)    
     
     low priority:
 
-    - [] add the border to the window
+    - [] visual representation of the border
     - [] end my suffering
 
 */
@@ -35,11 +36,11 @@ TODO:
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-#define borderRadius 0.9f
 
+unsigned int VBO;
+#define borderRadius 0.9f
 #define NUM_SEGMENTS 20
 #define INITIAL_CAPACITY 10
-
 float radius = 0.1f; // Normalized device coordinates range from -1 to 1
 bool spacePressed = false; // prevents spawning multiple balls in one frame
 
@@ -82,6 +83,11 @@ void addPoint(pointArray *a, double x, double y, double vx, double vy) {
         }
         a->points = newPoints;
         printf("Resized array to %d\n", a->capacity);
+
+        // Update the buffer size
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, (NUM_SEGMENTS + 2) * 2 * sizeof(float) * a->capacity, NULL, GL_STREAM_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
     printf("Added point at %d\n", a->size);
     centerPoint *p = &a->points[a->size++];
