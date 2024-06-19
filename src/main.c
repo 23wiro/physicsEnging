@@ -5,13 +5,15 @@ TODO:
 
     High Priority:
 
+    - [] fix jitterint with large number of balls
+
     - [x] fix balls not showing after exceeding initial capacity 
         (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
         Nothing works
 
     Medium Priority:
 
-    - [] fix the issue where the balls are not colliding with each other properly
+    - [x] fix the issue where the balls phasing through each other properly
         (no clue why)
     - [x] fix the issue where the balls slowly phase through the border
         (easy fix, just need to check if the ball is on the border and then disable gravity)    
