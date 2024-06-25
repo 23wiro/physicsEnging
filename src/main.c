@@ -42,7 +42,7 @@ TODO:
 float SLOP = 0.0001;
 float borderRadius = 0.9f;
 int NUM_SEGMENTS = 20;
-int INITIAL_CAPACITY = 10;
+int INITIAL_CAPACITY = 20;
 float timeStep = 0.01;
 float M_PI = 3.14159265358979323846;
 
@@ -198,9 +198,6 @@ int main() {
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, projection);
 
         glBindVertexArray(VAO);
-        for (int i = 0; i < a.size; i++) {
-            glDrawArrays(GL_TRIANGLE_FAN, i * (NUM_SEGMENTS + 2), NUM_SEGMENTS + 2);
-        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();

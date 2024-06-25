@@ -11,7 +11,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define NUM_SEGMENTS 20
+#define NUM_SEGMENTS 10
 #define borderRadius 0.9f
 #define SLOP 0.0001
 
@@ -36,18 +36,13 @@ void freePointArray(pointArray *a) {
 void addPoint(pointArray *a, double x, double y, double vx, double vy) {
     if (a->size >= a->capacity) {
         a->capacity *= 2;
-        centerPoint *newPoints = (centerPoint *)realloc(a->points, a->capacity * sizeof(centerPoint));
-        if (newPoints == NULL) {
+        a->points = (centerPoint *)realloc(a->points, a->capacity * sizeof(centerPoint));
+        if (a->points == NULL) {
             fprintf(stderr, "Epic realloc failure\n");
             return;
         }
-        a->points = newPoints;
         printf("Resized array to %d\n", a->capacity);
 
-        // Update VBO buffer size
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, (NUM_SEGMENTS + 2) * 2 * sizeof(float) * a->capacity, NULL, GL_STREAM_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
     printf("Added point at %d\n", a->size);
     centerPoint *p = &a->points[a->size++];
@@ -121,14 +116,28 @@ void verlet(centerPoint *p, double dt, float *dx, float *dy) {
 
     p->velocity.x += p->acceleration.x * dt;
     p->velocity.y += p->acceleration.y * dt;
+
+    double velocityThreshold = 0.001;
+    if(fabs(p->velocity.x) < velocityThreshold && fabs(p->velocity.y) < velocityThreshold) {
+        p->velocity.x = 0.0;
+        p->velocity.y = 0.0;
+    }
+
 }
 
 void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
+    int totalSize = a->size * (NUM_SEGMENTS + 2) * 2 * sizeof(float);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Resize the buffer to ensure it can hold all vertices
+    glBufferData(GL_ARRAY_BUFFER, totalSize, NULL, GL_DYNAMIC_DRAW);
+
     for (int i = 0; i < a->size; ++i) {
         float vertices[(NUM_SEGMENTS + 2) * 2];
         circleGen(&a->points[i], radius, NUM_SEGMENTS, vertices);
+        // Update the buffer with vertex data for each point
         glBufferSubData(GL_ARRAY_BUFFER, i * (NUM_SEGMENTS + 2) * 2 * sizeof(float), (NUM_SEGMENTS + 2) * 2 * sizeof(float), vertices);
+        // Draw the point
+        glDrawArrays(GL_TRIANGLE_FAN, i * (NUM_SEGMENTS + 2), NUM_SEGMENTS + 2);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
