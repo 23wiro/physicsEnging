@@ -6,6 +6,7 @@
         "windows.h": "c",
         "glfw3.h": "c",
         "math.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "glad.h": "c"
     }
 }

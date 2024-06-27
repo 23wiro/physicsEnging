@@ -9,7 +9,7 @@ TODO:
         (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
         Nothing works
 
-    - [] fix the horrible jittering
+    - [x] fix the horrible jittering (jittering now manageble) 
 
     Medium Priority:
 
@@ -45,6 +45,7 @@ int NUM_SEGMENTS = 20;
 int INITIAL_CAPACITY = 20;
 float timeStep = 0.01;
 float M_PI = 3.14159265358979323846;
+int subSteps = 10; // divide the main time step into 5 sub-steps
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -186,10 +187,11 @@ int main() {
             spacePressed = false;
         }
 
-        for (int i = 0; i < a.size; i++) {
-            verlet(&a.points[i], timeStep, &dx, &dy);
-            borderCollision(&a.points[i], radius);
-        }
+
+    for (int i = 0; i < a.size; i++) {
+        verlet(&a.points[i], timeStep, subSteps);
+        borderCollision(&a.points[i], radius);
+    }
 
         collisionDetection(&a, radius);
         updateVertexData(&a, VBO, radius);
