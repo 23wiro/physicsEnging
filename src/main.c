@@ -45,6 +45,10 @@ int NUM_SEGMENTS = 20;
 int INITIAL_CAPACITY = 20;
 float timeStep = 0.01;
 float M_PI = 3.14159265358979323846;
+<<<<<<< Updated upstream
+=======
+int subSteps = 20; // divide the main time step into 5 sub-steps
+>>>>>>> Stashed changes
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -80,6 +84,10 @@ void getMonitorResolution(int *width, int *height) {
 int main() {
     pointArray a;
     centerPoint boundryCenter;
+
+    float cellWidth = 2.0f / divisionX;
+    float cellHeight = 2.0f / divisionY;
+
     initPointArray(&a, INITIAL_CAPACITY);
     addPoint(&a, 0.0, 0.0, 1.0, 0.5); // Starting position and velocity
 
@@ -186,10 +194,18 @@ int main() {
             spacePressed = false;
         }
 
+<<<<<<< Updated upstream
         for (int i = 0; i < a.size; i++) {
             verlet(&a.points[i], timeStep, &dx, &dy);
             borderCollision(&a.points[i], radius);
         }
+=======
+
+    for (int i = 0; i < a.size; i++) {
+        verlet(&a.points[i], timeStep, subSteps, cellWidth, cellHeight, i);
+        borderCollision(&a.points[i], radius);
+    }
+>>>>>>> Stashed changes
 
         collisionDetection(&a, radius);
         updateVertexData(&a, VBO, radius);
