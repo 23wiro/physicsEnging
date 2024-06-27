@@ -15,9 +15,9 @@
 #define borderRadius 0.9f
 #define SLOP 0.0001
 
+// Define these variables in common.c
 unsigned int VBO;
-float radius = 0.01f;
-
+float radius = 0.01f; // Move the definition from main.c to here
 
 
 void initPointArray(pointArray *a, int initialSize) {
@@ -31,153 +31,6 @@ void freePointArray(pointArray *a) {
     a->points = NULL;
     a->size = 0;
     a->capacity = 0;
-}
-
-void initChunkArray(int divisionX, int divisionY) {
-    list ***chunkArray = (list ***)malloc(divisionX * sizeof(list **));
-    if (chunkArray == NULL) {
-        fprintf(stderr, "Failed to allocate memory for chunkArray\n");
-        exit(1); // Or handle the error as appropriate
-    }
-
-    for (int i = 0; i < divisionX; i++) {
-        chunkArray[i] = (list **)malloc(divisionY * sizeof(list *));
-        if (chunkArray[i] == NULL) {
-            fprintf(stderr, "Failed to allocate memory for chunkArray[%d]\n", i);
-            exit(1); // Or handle the error as appropriate
-        }
-        for (int j = 0; j < divisionY; j++) {
-            chunkArray[i][j] = (list *)malloc(sizeof(list));
-            if (chunkArray[i][j] == NULL) {
-                fprintf(stderr, "Failed to allocate memory for list\n");
-                exit(1); // Or handle the error as appropriate
-            }
-            // Initialize the new list node
-            chunkArray[i][j]->data = NULL;
-            chunkArray[i][j]->next = NULL;
-        }
-    }
-    // Remember to free this memory later
-}
-
-void freeChunkArray(int divisionX, int divisionY, list ***chunkArray) {
-    for (int i = 0; i < divisionX; i++) {
-        for (int j = 0; j < divisionY; j++) {
-            // Free each list node here, assuming a function freeList exists
-            freeList(chunkArray[i][j]);
-        }
-        free(chunkArray[i]);
-    }
-    free(chunkArray);
-}
-
-// Function to add a new node to the list
-list* addToList(list *head, centerPoint *p) {
-    list *newNode = (list*)malloc(sizeof(list));
-    if (newNode == NULL) {
-        fprintf(stderr, "Epic malloc failure\n");
-        return head; // Early return on failure
-    }
-
-    newNode->data = p->indexInPointArray;
-    newNode->next = head;
-    return newNode; // Return the new head of the list
-}
-
-void addToChunk(centerPoint *p, list ***chunkArray) {
-    int xIndex = (int)(p->gridPosition.x);
-    int yIndex = (int)(p->gridPosition.y);
-    chunkArray[xIndex][yIndex] = addToList(chunkArray[xIndex][yIndex], p);
-}
- 
-// Function to get data from the list by index
-int getDataOfIndex(list *head, int index, int *data) {
-    if (head == NULL) {
-        printf("List is empty\n");
-        return 0; // Indicate failure or empty list
-    }
-
-    list *current = head;
-    int currentIndex = 0;
-
-    while (current != NULL) {
-        if (currentIndex == index) {
-            *data = current->data;
-            return 1; // Success
-        }
-        current = current->next;
-        currentIndex++;
-    }
-
-    return 0; // Indicate that index was out of bounds
-}
-
-int getIndexOfData(list *head, int data, int *index) {
-    if (head == NULL) {
-        printf("List is empty\n");
-        return 0; // Indicate failure or empty list
-    }
-
-    list *current = head;
-    int currentIndex = 0;
-
-    while (current != NULL) {
-        if (current->data == data) {
-            return currentIndex; // Success
-        }
-        current = current->next;
-        currentIndex++;
-    }
-    return NULL;
-}
-
-// Function to set data in the list by index
-int setDataOfIndex(list *head, int index, int data) {
-    list *current = head;
-    int currentIndex = 0;
-
-    while (current != NULL && currentIndex < index) {
-        current = current->next;
-        currentIndex++;
-    }
-
-    if (current == NULL) {
-        printf("Index out of bounds\n");
-        return 0;
-    }
-
-    current->data = data;
-    return 1;
-}
-
-// Function to remove a node from the list by index
-void popFromList(list **head, int index) {
-    if (*head == NULL) {
-        printf("List is empty\n");
-        return;
-    }
-
-    list *current = *head;
-    if (index == 0) {
-        *head = current->next;
-        free(current);
-        return;
-    }
-
-    int currentIndex = 0;
-    while (current != NULL && currentIndex < index - 1) {
-        current = current->next;
-        currentIndex++;
-    }
-
-    if (current == NULL || current->next == NULL) {
-        printf("Index out of bounds\n");
-        return;
-    }
-
-    list *ptrToNext = current->next->next;
-    free(current->next);
-    current->next = ptrToNext;
 }
 
 void addPoint(pointArray *a, double x, double y, double vx, double vy) {
@@ -251,7 +104,7 @@ void gravity(centerPoint *p) {
     p->acceleration = (vector2){0.0, G};
 }
 
-void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cellHeight, list *chunkArray, int indexInPointArray) {
+void verlet(centerPoint *p, double dt, int subSteps) {
     double subDt = dt / subSteps; // Calculate sub-step duration
     for (int step = 0; step < subSteps; ++step) {
         float dx, dy;
@@ -263,13 +116,6 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
         if (!borderCollision(p, radius)) {
             gravity(p);
         }
-
-        int xIndex = (int)(p->position.x) / cellWidth;
-        int yIndex = (int)(p->position.y) / cellHeight;
-
-        p->gridPosition = (vector2){xIndex, yIndex};
-
-        addToChunk(p, chunkArray);
 
         p->velocity.x += p->acceleration.x * subDt;
         p->velocity.y += p->acceleration.y * subDt;
@@ -300,68 +146,9 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 }
 
 
-void collisionDetection(pointArray *a, float radius, int cellWidth, int cellHeight, list ***chunkArray) {
+void collisionDetection(pointArray *a, float radius) {
     const double damping = 0.9; // Damping factor to reduce jittering
     const double slop = SLOP; // Small threshold for allowable overlap
-    int totalXLength = 2;
-    int totalYLength = 2; 
-
-    float xClearance, yClearance;
-    
-    for (int x; x < divisionX; x++){
-        for (int y; y < divisionY; y++){
-            list *current = chunkArray[x][y];
-            while (current != NULL) {
-                int index;
-                getDataOfIndex(current, 0, &index);
-                centerPoint *p = &a->points[index];
-                current = current->next;
-                for (int i = 0; i < 9; i++) {
-                    int xIndex = x + i % 3 - 1;
-                    int yIndex = y + i / 3 - 1;
-                    if (xIndex >= 0 && xIndex < divisionX && yIndex >= 0 && yIndex < divisionY) {
-                        list *current = chunkArray[xIndex][yIndex];
-                        while (current != NULL) {
-                            int index;
-                            getDataOfIndex(current, 0, &index);
-                            centerPoint *q = &a->points[index];
-                            current = current->next;
-                            if (p != q) {
-                                double dx = p->position.x - q->position.x;
-                                double dy = p->position.y - q->position.y;
-                                double distance = sqrt(dx * dx + dy * dy);
-                                double overlap = 2 * radius - distance;
-
-                                if (overlap > slop) {
-                                    // Separate the balls
-                                    double nx = dx / distance;
-                                    double ny = dy / distance;
-                                    p->position.x += nx * (overlap - slop) / 2;
-                                    p->position.y += ny * (overlap - slop) / 2;
-                                    q->position.x -= nx * (overlap - slop) / 2;
-                                    q->position.y -= ny * (overlap - slop) / 2;
-
-                                    // Calculate new velocities
-                                    double vx = p->velocity.x - q->velocity.x;
-                                    double vy = p->velocity.y - q->velocity.y;
-                                    double dotProduct = vx * nx + vy * ny;
-
-                                    // Apply the collision response with damping
-                                    p->velocity.x = (p->velocity.x - dotProduct * nx) * damping;
-                                    p->velocity.y = (p->velocity.y - dotProduct * ny) * damping;
-                                    q->velocity.x = (q->velocity.x + dotProduct * nx) * damping;
-                                    q->velocity.y = (q->velocity.y + dotProduct * ny) * damping;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-
 
     for (int i = 0; i < a->size; i++) {
         for (int j = i + 1; j < a->size; j++) {
