@@ -11,6 +11,7 @@ typedef struct {
     vector2 acceleration;
     vector2 gridPosition;
     int indexInPointArray;
+    bool isColliding;
 } centerPoint;
 
 typedef struct list {

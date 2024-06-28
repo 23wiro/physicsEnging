@@ -43,7 +43,6 @@ float SLOP = 0.0001;
 float borderRadius = 0.9f;
 int NUM_SEGMENTS = 20;
 int INITIAL_CAPACITY = 20;
-float timeStep = 0.01;
 float M_PI = 3.14159265358979323846;
 int subSteps = 10; // divide the main time step into 5 sub-steps
 
@@ -112,6 +111,10 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
+
+    glfwSetTime(0.0);
+
+    double lastTime = glfwGetTime();
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         fprintf(stderr, "Failed to initialize GLAD\n");
@@ -183,6 +186,10 @@ int main() {
     int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
 
     while (!glfwWindowShouldClose(window)) {
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        
         glClear(GL_COLOR_BUFFER_BIT);
         float dx, dy;
         bool spaceCurrentlyPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
@@ -195,7 +202,7 @@ int main() {
         }
 
         for (int i = 0; i < a.size; i++) {
-            verlet(&a.points[i], timeStep, subSteps, cellWidth, cellHeight, chunkArray);
+            verlet(&a.points[i], deltaTime, subSteps, cellWidth, cellHeight, chunkArray);
             borderCollision(&a.points[i], radius);
         }
 
@@ -219,5 +226,6 @@ int main() {
     glfwTerminate();
 
     freePointArray(&a);
+    freeChunkArray(gridDivisions.x, gridDivisions.y, chunkArray);
     return 0;
 }

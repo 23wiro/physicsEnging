@@ -60,7 +60,6 @@ void freeChunkArray(int divisionX, int divisionY, list ***chunkArray) {
             // Free each list node here, assuming a function freeList exists
             freeList(chunkArray[i][j]);
         }
-        free(chunkArray[i]);
     }
     free(chunkArray);
 }
@@ -228,8 +227,9 @@ int borderCollision(centerPoint *p, float radius) {
         
         // Reverse velocity along the normal direction
         float dotProduct = p->velocity.x * nx + p->velocity.y * ny;
-        p->velocity.x -= 2 * dotProduct * nx;
-        p->velocity.y -= 2 * dotProduct * ny;
+        float damping = 0.95; // Example damping factor, adjust as needed
+        p->velocity.x -= 2 * dotProduct * nx * damping;
+        p->velocity.y -= 2 * dotProduct * ny * damping;
         
         // Reposition the ball just inside the boundary
         p->position.x = (borderRadius - radius) * nx;
@@ -246,6 +246,9 @@ void gravity(centerPoint *p) {
 }
 
 void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cellHeight, list ***chunkArray) {
+    float frictionCoeficient = 0.1;
+    float frictionForce = frictionCoeficient * p->velocity.y;
+
     double subDt = dt / subSteps; // Calculate sub-step duration
     for (int step = 0; step < subSteps; ++step) {
         float dx, dy;
@@ -272,6 +275,10 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
         if(fabs(p->velocity.x) < velocityThreshold && fabs(p->velocity.y) < velocityThreshold) {
             p->velocity.x = 0.0;
             p->velocity.y = 0.0;
+        }
+
+        if (p->isColliding) {
+
         }
     }
 
@@ -306,55 +313,73 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 
 
 void collisionDetection(pointArray *a, float radius, list ***chunkArray, vector2 *gridSize) {
+    if (!a || !gridSize || !chunkArray) {
+        fprintf(stderr, "Error: Null pointer passed to collisionDetection.\n");
+        return; // Early return to avoid dereferencing null pointers
+    }
+    if (!a->points || a->size <= 0) {
+        fprintf(stderr, "Error: Invalid pointArray structure.\n");
+        return; // Early return if pointArray is invalid
+    }
+
     const double damping = 0.9; // Damping factor to reduce jittering
     const double slop = SLOP; // Small threshold for allowable overlap
-    int totalXLength = 2;
-    int totalYLength = 2; 
-
-    float xClearance, yClearance;
 
     int divisionX = gridSize->x;
     int divisionY = gridSize->y;
-    
-    for (int x; x < divisionX; x++){
-        for (int y; y < divisionY; y++){
-            list *current = chunkArray[x][y];
-            while (current != NULL) {
-                for (int c; c < current->data; c++){
-                    for (int d; d < current->data; d++){
-                        if (c != d) {
-                            double dx = a->points[c].position.x - a->points[c].position.x;
-                            double dy = a->points[d].position.y - a->points[d].position.y;
-                            double distance = sqrt(dx * dx + dy * dy);
-                            double overlap = 2 * radius - distance;
 
-                            centerPoint *p = &a->points[c];
-                            centerPoint *q = &a->points[d];
+    for (int i; i < divisionX; i++) {
+        for (int j; j < divisionY; j++) {
+            list *current = chunkArray[i][j];
+            int listSize;
+            while(current != NULL) {
+                listSize++;
+                current = current->next;
+            }
 
-                            if (overlap > slop) {
-                                // Separate the balls
-                                double nx = dx / distance;
-                                double ny = dy / distance;
-                                p->position.x += nx * (overlap - slop) / 2;
-                                p->position.y += ny * (overlap - slop) / 2;
-                                q->position.x -= nx * (overlap - slop) / 2;
-                                q->position.y -= ny * (overlap - slop) / 2;
+            if (listSize < 2){
+                continue;
+            }
 
-                                // Calculate new velocities
-                                double vx = p->velocity.x - q->velocity.x;
-                                double vy = p->velocity.y - q->velocity.y;
-                                double dotProduct = vx * nx + vy * ny;
+            for(int k; k <= listSize; k++) {
+                for (int l; l < listSize; l++) {
+                    int index1, index2;
+                    getDataOfIndex(chunkArray[i][j], k, &index1);
+                    getDataOfIndex(chunkArray[i][j], l, &index2);
 
-                                // Apply the collision response with damping
-                                p->velocity.x = (p->velocity.x - dotProduct * nx) * damping;
-                                p->velocity.y = (p->velocity.y - dotProduct * ny) * damping;
-                                q->velocity.x = (q->velocity.x + dotProduct * nx) * damping;
-                                q->velocity.y = (q->velocity.y + dotProduct * ny) * damping;
-                            }
-                        }
+                    if (index1 == index2) {
+                        continue;
+                    }
+
+                    centerPoint *p = &a->points[index1];
+                    centerPoint *q = &a->points[index2];
+
+                    double dx = p->position.x - q->position.x;
+                    double dy = p->position.y - q->position.y;
+                    double distance = sqrt(dx * dx + dy * dy);
+                    double overlap = 2 * radius - distance;
+
+                    if (overlap > slop) {
+                        double nx = dx / distance;
+                        double ny = dy / distance;
+                        p->position.x += nx * (overlap - slop) / 2;
+                        p->position.y += ny * (overlap - slop) / 2;
+                        q->position.x -= nx * (overlap - slop) / 2;
+                        q->position.y -= ny * (overlap - slop) / 2;
+
+                        // Calculate new velocities
+                        double vx = p->velocity.x - q->velocity.x;
+                        double vy = p->velocity.y - q->velocity.y;
+                        double dotProduct = vx * nx + vy * ny;
+
+                        // Apply the collision response with damping
+                        p->velocity.x = (p->velocity.x - dotProduct * nx) * damping;
+                        p->velocity.y = (p->velocity.y - dotProduct * ny) * damping;
+                        q->velocity.x = (q->velocity.x + dotProduct * nx) * damping;
+                        q->velocity.y = (q->velocity.y + dotProduct * ny) * damping;
                     }
                 }
-            }           
+            }
         }
     }
 }
