@@ -26,8 +26,6 @@ typedef struct {
 
 extern unsigned int VBO;
 extern float radius;
-extern int divisionX = 9;
-extern int divisionY = 9;
 
 
 void initPointArray(pointArray *a, int initialSize);
@@ -35,6 +33,10 @@ void initPointArray(pointArray *a, int initialSize);
 void freePointArray(pointArray *a);
 
 list* addToList(list *head, centerPoint *p);
+
+list*** initChunkArray(int divisionX, int divisionY);
+
+void freeChunkArray(int divisionX, int divisionY, list ***chunkArray);
 
 void addToChunk(centerPoint *p, list ***chunkArray);
 
@@ -50,15 +52,11 @@ void circleGen(centerPoint *p, float radius, int numSegments, float *vertices);
 
 void drawHollow(centerPoint *p, float radius, int numSegments, unsigned int VBO);
 
-<<<<<<< Updated upstream
-void verlet(centerPoint *p, double timeStep, float *dx, float *dy);
-=======
-void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cellHeight);
->>>>>>> Stashed changes
+void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cellHeight, list ***chunkArray);
 
 int borderCollision(centerPoint *p, float radius);
 
-void collisionDetection(pointArray *a, float radius, int cellWidth, int cellHeight, list ***chunkArray);
+void collisionDetection(pointArray *a, float radius, list ***chunkArray);
 
 void updateVertexData(pointArray *a, unsigned int VBO, float radius);
 

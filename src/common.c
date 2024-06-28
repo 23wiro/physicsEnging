@@ -33,31 +33,25 @@ void freePointArray(pointArray *a) {
     a->capacity = 0;
 }
 
-void initChunkArray(int divisionX, int divisionY) {
+list*** initChunkArray(int divisionX, int divisionY) {
     list ***chunkArray = (list ***)malloc(divisionX * sizeof(list **));
-    if (chunkArray == NULL) {
-        fprintf(stderr, "Failed to allocate memory for chunkArray\n");
-        exit(1); // Or handle the error as appropriate
-    }
-
     for (int i = 0; i < divisionX; i++) {
         chunkArray[i] = (list **)malloc(divisionY * sizeof(list *));
-        if (chunkArray[i] == NULL) {
-            fprintf(stderr, "Failed to allocate memory for chunkArray[%d]\n", i);
-            exit(1); // Or handle the error as appropriate
-        }
         for (int j = 0; j < divisionY; j++) {
-            chunkArray[i][j] = (list *)malloc(sizeof(list));
-            if (chunkArray[i][j] == NULL) {
-                fprintf(stderr, "Failed to allocate memory for list\n");
-                exit(1); // Or handle the error as appropriate
-            }
-            // Initialize the new list node
-            chunkArray[i][j]->data = NULL;
-            chunkArray[i][j]->next = NULL;
+            chunkArray[i][j] = (list *)malloc(sizeof(list)); // Assuming list is a struct
+            chunkArray[i][j]->data = NULL; // Assuming 'data' is a pointer within 'list'
         }
     }
-    // Remember to free this memory later
+    return chunkArray;
+}
+
+void freeList(list *head) {
+    list *tmp;
+    while (head != NULL) {
+        tmp = head;
+        head = head->next;
+        free(tmp);
+    }
 }
 
 void freeChunkArray(int divisionX, int divisionY, list ***chunkArray) {
@@ -128,7 +122,7 @@ int getIndexOfData(list *head, int data, int *index) {
         current = current->next;
         currentIndex++;
     }
-    return NULL;
+    return 0;
 }
 
 // Function to set data in the list by index
@@ -251,17 +245,7 @@ void gravity(centerPoint *p) {
     p->acceleration = (vector2){0.0, G};
 }
 
-<<<<<<< Updated upstream
-void verlet(centerPoint *p, double dt, float *dx, float *dy) {
-    *dx = p->velocity.x * dt + 0.5 * p->acceleration.x * dt * dt;
-    *dy = p->velocity.y * dt + 0.5 * p->acceleration.y * dt * dt;
-    p->position.x += *dx;
-    p->position.y += *dy;
-
-    if (!borderCollision(p, radius)) {
-        gravity(p);
-=======
-void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cellHeight, list *chunkArray, int indexInPointArray) {
+void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cellHeight, list ***chunkArray) {
     double subDt = dt / subSteps; // Calculate sub-step duration
     for (int step = 0; step < subSteps; ++step) {
         float dx, dy;
@@ -279,7 +263,7 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
 
         p->gridPosition = (vector2){xIndex, yIndex};
 
-        addToChunk(p, chunkArray);
+        addToChunk(p, ***chunkArray);
 
         p->velocity.x += p->acceleration.x * subDt;
         p->velocity.y += p->acceleration.y * subDt;
@@ -289,7 +273,6 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
             p->velocity.x = 0.0;
             p->velocity.y = 0.0;
         }
->>>>>>> Stashed changes
     }
 
     p->velocity.x += p->acceleration.x * dt;
@@ -321,13 +304,9 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 }
 
 
-<<<<<<< Updated upstream
-void collisionDetection(pointArray *a, float radius) {
-    const double damping = 0.98; // Damping factor to reduce jittering
-=======
-void collisionDetection(pointArray *a, float radius, int cellWidth, int cellHeight, list ***chunkArray) {
+
+void collisionDetection(pointArray *a, float radius, list ***chunkArray) {
     const double damping = 0.9; // Damping factor to reduce jittering
->>>>>>> Stashed changes
     const double slop = SLOP; // Small threshold for allowable overlap
     int totalXLength = 2;
     int totalYLength = 2; 
