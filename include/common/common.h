@@ -56,7 +56,7 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
 
 int borderCollision(centerPoint *p, float radius);
 
-void collisionDetection(pointArray *a, float radius, list ***chunkArray);
+void collisionDetection(pointArray *a, float radius, list ***chunkArray, vector2 *gridSize);
 
 void updateVertexData(pointArray *a, unsigned int VBO, float radius);
 

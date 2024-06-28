@@ -39,7 +39,7 @@ list*** initChunkArray(int divisionX, int divisionY) {
         chunkArray[i] = (list **)malloc(divisionY * sizeof(list *));
         for (int j = 0; j < divisionY; j++) {
             chunkArray[i][j] = (list *)malloc(sizeof(list)); // Assuming list is a struct
-            chunkArray[i][j]->data = NULL; // Assuming 'data' is a pointer within 'list'
+            chunkArray[i][j]->data = -1; // Assuming 'data' is a pointer within 'list'
         }
     }
     return chunkArray;
@@ -263,7 +263,7 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
 
         p->gridPosition = (vector2){xIndex, yIndex};
 
-        addToChunk(p, ***chunkArray);
+        addToChunk(p, chunkArray);
 
         p->velocity.x += p->acceleration.x * subDt;
         p->velocity.y += p->acceleration.y * subDt;
@@ -305,13 +305,16 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 
 
 
-void collisionDetection(pointArray *a, float radius, list ***chunkArray) {
+void collisionDetection(pointArray *a, float radius, list ***chunkArray, vector2 *gridSize) {
     const double damping = 0.9; // Damping factor to reduce jittering
     const double slop = SLOP; // Small threshold for allowable overlap
     int totalXLength = 2;
     int totalYLength = 2; 
 
     float xClearance, yClearance;
+
+    int divisionX = gridSize->x;
+    int divisionY = gridSize->y;
     
     for (int x; x < divisionX; x++){
         for (int y; y < divisionY; y++){

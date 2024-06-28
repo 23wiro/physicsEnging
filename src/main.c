@@ -47,8 +47,7 @@ float timeStep = 0.01;
 float M_PI = 3.14159265358979323846;
 int subSteps = 10; // divide the main time step into 5 sub-steps
 
-int divisionX = 9;
-int divisionY = 9;
+vector2 gridDivisions = {9, 9};
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -84,10 +83,10 @@ void getMonitorResolution(int *width, int *height) {
 int main() {
     pointArray a;
     centerPoint boundryCenter;
-    list ***chunkArray = initChunkArray(divisionX, divisionY);
+    list ***chunkArray = initChunkArray(gridDivisions.x, gridDivisions.y);
 
-    float cellWidth = 2.0f / divisionX;
-    float cellHeight = 2.0f / divisionY;
+    float cellWidth = 2.0f / gridDivisions.x;
+    float cellHeight = 2.0f / gridDivisions.y;
 
     initPointArray(&a, INITIAL_CAPACITY);
     addPoint(&a, 0.0, 0.0, 1.0, 0.5); // Starting position and velocity
@@ -201,7 +200,7 @@ int main() {
         }
 
 
-        collisionDetection(&a, radius, chunkArray);
+        collisionDetection(&a, radius, chunkArray, &gridDivisions);
         updateVertexData(&a, VBO, radius);
 
         glUseProgram(shaderProgram);
