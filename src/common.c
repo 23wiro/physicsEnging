@@ -18,8 +18,6 @@
 unsigned int VBO;
 float radius = 0.01f;
 
-
-
 void initPointArray(pointArray *a, int initialSize) {
     a->points = (centerPoint *)malloc(initialSize * sizeof(centerPoint));
     a->size = 0;
@@ -38,9 +36,8 @@ list*** initChunkArray(int divisionX, int divisionY) {
     for (int i = 0; i < divisionX; i++) {
         chunkArray[i] = (list **)malloc(divisionY * sizeof(list *));
         for (int j = 0; j < divisionY; j++) {
-            chunkArray[i][j] = (list *)malloc(sizeof(list)); // Assuming list is a struct
-            chunkArray[i][j]->data = -1; // Assuming 'data' is a pointer within 'list'
-        }
+            chunkArray[i][j] = (list *)malloc(sizeof(list));
+            chunkArray[i][j]->data = NULL;
     }
     return chunkArray;
 }
@@ -72,7 +69,7 @@ list* addToList(list *head, centerPoint *p) {
         return head; // Early return on failure
     }
 
-    newNode->data = p->indexInPointArray;
+    newNode->data = &p;
     newNode->next = head;
     return newNode; // Return the new head of the list
 }
@@ -84,10 +81,10 @@ void addToChunk(centerPoint *p, list ***chunkArray) {
 }
  
 // Function to get data from the list by index
-int getDataOfIndex(list *head, int index, int *data) {
+*centerPoint getDataOfIndex(list *head, int index) {
     if (head == NULL) {
         printf("List is empty\n");
-        return 0; // Indicate failure or empty list
+        return NULL; // Indicate failure or empty list
     }
 
     list *current = head;
@@ -95,8 +92,7 @@ int getDataOfIndex(list *head, int index, int *data) {
 
     while (current != NULL) {
         if (currentIndex == index) {
-            *data = current->data;
-            return 1; // Success
+            return current->data;
         }
         current = current->next;
         currentIndex++;
@@ -104,26 +100,6 @@ int getDataOfIndex(list *head, int index, int *data) {
 
     return 0; // Indicate that index was out of bounds
 }
-
-int getIndexOfData(list *head, int data, int *index) {
-    if (head == NULL) {
-        printf("List is empty\n");
-        return 0; // Indicate failure or empty list
-    }
-
-    list *current = head;
-    int currentIndex = 0;
-
-    while (current != NULL) {
-        if (current->data == data) {
-            return currentIndex; // Success
-        }
-        current = current->next;
-        currentIndex++;
-    }
-    return 0;
-}
-
 // Function to set data in the list by index
 int setDataOfIndex(list *head, int index, int data) {
     list *current = head;
@@ -312,7 +288,7 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 
 
 
-void collisionDetection(pointArray *a, float radius, list ***chunkArray, vector2 *gridSize) {
+void collisionDetection(float radius, list ***chunkArray, vector2 *gridSize) {
     if (!a || !gridSize || !chunkArray) {
         fprintf(stderr, "Error: Null pointer passed to collisionDetection.\n");
         return; // Early return to avoid dereferencing null pointers
@@ -343,16 +319,13 @@ void collisionDetection(pointArray *a, float radius, list ***chunkArray, vector2
 
             for(int k; k <= listSize; k++) {
                 for (int l; l < listSize; l++) {
-                    int index1, index2;
-                    getDataOfIndex(chunkArray[i][j], k, &index1);
-                    getDataOfIndex(chunkArray[i][j], l, &index2);
+                    centerPoint *p = getDataOfIndex(chunkArray[i][j], k);
+                    centerPoint *q = getDataOfIndex(chunkArray[i][j], l);
 
                     if (index1 == index2) {
                         continue;
                     }
 
-                    centerPoint *p = &a->points[index1];
-                    centerPoint *q = &a->points[index2];
 
                     double dx = p->position.x - q->position.x;
                     double dy = p->position.y - q->position.y;
