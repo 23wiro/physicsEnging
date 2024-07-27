@@ -9,7 +9,7 @@ TODO:
         (somehow the buffer is not being rezised properly even though the realloc is working fine. Problem doesnt appear untill initial capacity is reached)
         Nothing works
 
-    - [] fix the horrible jittering
+    - [x] fix the horrible jittering
 
     Medium Priority:
 
@@ -26,7 +26,6 @@ TODO:
 
     - [] visual representation of the border
     - [] end my suffering
-    - [] optimize updateVertexData function by updating the vertex data instead of creating a new array every time
 
 */
 
@@ -88,6 +87,7 @@ int main() {
     float cellHeight = 2.0f / gridDivisions.y;
 
     initPointArray(&a, INITIAL_CAPACITY);
+    initChunkArray(gridDivisions.x, gridDivisions.y);
     addPoint(&a, 0.0, 0.0, 1.0, 0.5); // Starting position and velocity
 
     int width, height;
@@ -207,7 +207,7 @@ int main() {
         }
 
 
-        collisionDetection(&a, radius, chunkArray, &gridDivisions);
+        collisionDetection(radius, chunkArray, &gridDivisions);
         updateVertexData(&a, VBO, radius);
 
         glUseProgram(shaderProgram);

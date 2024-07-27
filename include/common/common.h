@@ -40,9 +40,9 @@ void freeChunkArray(int divisionX, int divisionY, list ***chunkArray);
 
 void addToChunk(centerPoint *p, list ***chunkArray);
 
-int getDataOfIndex(list *head, int index, int *data);
+centerPoint* getDataOfIndex(list *head, int index);
 
-int setDataOfIndex(list *head, int index, int data);
+// int setDataOfIndex(list *head, int index, int data);
 
 void popFromList(list **head, int index);
 
@@ -56,7 +56,7 @@ void verlet(centerPoint *p, double dt, int subSteps, float cellWidth, float cell
 
 int borderCollision(centerPoint *p, float radius);
 
-void collisionDetection(pointArray *a, float radius, list ***chunkArray, vector2 *gridSize);
+void collisionDetection(float radius, list ***chunkArray, vector2 *gridSize);
 
 void updateVertexData(pointArray *a, unsigned int VBO, float radius);
 

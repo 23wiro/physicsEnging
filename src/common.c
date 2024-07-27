@@ -38,6 +38,7 @@ list*** initChunkArray(int divisionX, int divisionY) {
         for (int j = 0; j < divisionY; j++) {
             chunkArray[i][j] = (list *)malloc(sizeof(list));
             chunkArray[i][j]->data = NULL;
+        }
     }
     return chunkArray;
 }
@@ -69,7 +70,7 @@ list* addToList(list *head, centerPoint *p) {
         return head; // Early return on failure
     }
 
-    newNode->data = &p;
+    newNode->data = p;
     newNode->next = head;
     return newNode; // Return the new head of the list
 }
@@ -81,7 +82,7 @@ void addToChunk(centerPoint *p, list ***chunkArray) {
 }
  
 // Function to get data from the list by index
-*centerPoint getDataOfIndex(list *head, int index) {
+centerPoint* getDataOfIndex(list *head, int index) {
     if (head == NULL) {
         printf("List is empty\n");
         return NULL; // Indicate failure or empty list
@@ -101,6 +102,7 @@ void addToChunk(centerPoint *p, list ***chunkArray) {
     return 0; // Indicate that index was out of bounds
 }
 // Function to set data in the list by index
+/*
 int setDataOfIndex(list *head, int index, int data) {
     list *current = head;
     int currentIndex = 0;
@@ -118,6 +120,7 @@ int setDataOfIndex(list *head, int index, int data) {
     current->data = data;
     return 1;
 }
+*/
 
 // Function to remove a node from the list by index
 void popFromList(list **head, int index) {
@@ -289,49 +292,36 @@ void updateVertexData(pointArray *a, unsigned int VBO, float radius) {
 
 
 void collisionDetection(float radius, list ***chunkArray, vector2 *gridSize) {
-    if (!a || !gridSize || !chunkArray) {
+    if (!gridSize || !chunkArray) {
         fprintf(stderr, "Error: Null pointer passed to collisionDetection.\n");
         return; // Early return to avoid dereferencing null pointers
     }
-    if (!a->points || a->size <= 0) {
-        fprintf(stderr, "Error: Invalid pointArray structure.\n");
-        return; // Early return if pointArray is invalid
-    }
-
     const double damping = 0.9; // Damping factor to reduce jittering
     const double slop = SLOP; // Small threshold for allowable overlap
-
     int divisionX = gridSize->x;
     int divisionY = gridSize->y;
-
-    for (int i; i < divisionX; i++) {
-        for (int j; j < divisionY; j++) {
+    for (int i = 0; i < divisionX; i++) {
+        for (int j = 0; j < divisionY; j++) {
             list *current = chunkArray[i][j];
-            int listSize;
+            int listSize = 0;
             while(current != NULL) {
                 listSize++;
                 current = current->next;
             }
-
             if (listSize < 2){
                 continue;
             }
-
-            for(int k; k <= listSize; k++) {
-                for (int l; l < listSize; l++) {
+            for(int k = 0; k < listSize; k++) {
+                for (int l = 0; l < listSize; l++) {
                     centerPoint *p = getDataOfIndex(chunkArray[i][j], k);
                     centerPoint *q = getDataOfIndex(chunkArray[i][j], l);
-
-                    if (index1 == index2) {
+                    if (p == q) {
                         continue;
                     }
-
-
                     double dx = p->position.x - q->position.x;
                     double dy = p->position.y - q->position.y;
                     double distance = sqrt(dx * dx + dy * dy);
                     double overlap = 2 * radius - distance;
-
                     if (overlap > slop) {
                         double nx = dx / distance;
                         double ny = dy / distance;
@@ -339,12 +329,10 @@ void collisionDetection(float radius, list ***chunkArray, vector2 *gridSize) {
                         p->position.y += ny * (overlap - slop) / 2;
                         q->position.x -= nx * (overlap - slop) / 2;
                         q->position.y -= ny * (overlap - slop) / 2;
-
                         // Calculate new velocities
                         double vx = p->velocity.x - q->velocity.x;
                         double vy = p->velocity.y - q->velocity.y;
                         double dotProduct = vx * nx + vy * ny;
-
                         // Apply the collision response with damping
                         p->velocity.x = (p->velocity.x - dotProduct * nx) * damping;
                         p->velocity.y = (p->velocity.y - dotProduct * ny) * damping;
